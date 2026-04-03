@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>檢驗報告提取工具</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Microsoft JhengHei','Noto Sans TC',sans-serif; background:#f5f4f0; color:#1a1a1a; min-height:100vh; padding:2rem; }
+h1 { font-size:1.5rem; font-weight:600; letter-spacing:.02em; margin-bottom:.25rem; }
+.subtitle { font-size:.85rem; color:#888; margin-bottom:2rem; }
+.card { background:#fff; border:1px solid #e0ddd6; border-radius:12px; padding:1.5rem; margin-bottom:1.25rem; }
+.section-title { font-size:.75rem; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:#999; margin-bottom:1rem; }
+.subsection { font-size:.8rem; font-weight:600; color:#555; margin:1rem 0 .5rem; padding-bottom:.25rem; border-bottom:1px solid #ece9e2; }
+.grid-6 { display:grid; grid-template-columns:repeat(6,1fr); gap:.6rem; }
+.grid-5 { display:grid; grid-template-columns:repeat(5,1fr); gap:.6rem; }
+.grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:.6rem; }
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:.6rem; }
+.span2 { grid-column:span 2; }
+.f label { display:block; font-size:.72rem; color:#888; margin-bottom:.25rem; font-weight:600; letter-spacing:.04em; }
+.f input, .f select { width:100%; padding:.4rem .65rem; border:1px solid #e0ddd6; border-radius:7px; font-family:inherit; font-size:.85rem; background:#faf9f7; color:#1a1a1a; outline:none; transition:border-color .15s; }
+.f input:focus, .f select:focus { border-color:#639922; }
+.f input[readonly] { background:#f0f0ee; color:#888; cursor:default; }
+.radio-group { display:flex; gap:.75rem; flex-wrap:wrap; align-items:center; margin-top:.25rem; }
+.radio-group label { font-size:.85rem; color:#333; font-weight:400; display:flex; align-items:center; gap:.25rem; cursor:pointer; }
+.radio-group input[type=radio],.radio-group input[type=checkbox] { width:auto; }
+.check-group { display:flex; gap:.6rem; flex-wrap:wrap; align-items:center; margin-top:.25rem; }
+.check-group label { font-size:.82rem; color:#333; font-weight:400; display:flex; align-items:center; gap:.25rem; cursor:pointer; }
+.check-group input { width:auto; }
+.exam-row { display:grid; grid-template-columns:90px 1fr; gap:.75rem; align-items:center; padding:.45rem 0; border-bottom:1px solid #f0ede8; }
+.exam-row:last-child { border-bottom:none; }
+.exam-label { font-size:.82rem; font-weight:600; color:#555; }
+.bp-wrap { display:flex; align-items:center; gap:.4rem; }
+.bp-wrap input { flex:1; }
+.bp-sep { font-size:1.1rem; color:#aaa; }
+.drop-zone { border:2px dashed #d0cdc6; border-radius:10px; padding:2rem; text-align:center; cursor:pointer; transition:border-color .2s,background .2s; background:#faf9f7; }
+.drop-zone:hover,.drop-zone.dragover { border-color:#3B6D11; background:#f0f7e8; }
+.drop-zone .icon { font-size:2rem; margin-bottom:.5rem; display:block; color:#aaa; }
+.drop-zone p { font-size:.9rem; color:#666; }
+.drop-zone span { font-size:.78rem; color:#aaa; }
+#fileInput { display:none; }
+.file-loaded { background:#f0f7e8; border-color:#639922; }
+.file-loaded .icon { color:#639922; }
+.tab-row { display:flex; margin-bottom:1.25rem; border-bottom:2px solid #e0ddd6; }
+.tab-btn { padding:.5rem 1.1rem; font-size:.85rem; font-weight:500; font-family:inherit; background:transparent; border:none; border-bottom:2px solid transparent; margin-bottom:-2px; cursor:pointer; color:#888; transition:color .15s,border-color .15s; }
+.tab-btn.active { color:#3B6D11; border-bottom-color:#3B6D11; }
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
+textarea.paste-input { width:100%; font-family:'Courier New',monospace; font-size:.75rem; border:1px solid #e0ddd6; border-radius:8px; padding:.75rem; background:#faf9f7; color:#333; resize:vertical; min-height:200px; line-height:1.6; outline:none; }
+textarea.paste-input:focus { border-color:#639922; }
+.tag-row { display:flex; gap:.4rem; flex-wrap:wrap; margin-bottom:.6rem; }
+.tag { font-size:.7rem; padding:2px 9px; border-radius:20px; border:1px solid #e0ddd6; color:#555; background:#fafaf8; }
+.tag.found { background:#eaf3de; border-color:#97c459; color:#3B6D11; }
+.tag.missing { background:#fcebeb; border-color:#f09595; color:#a32d2d; }
+textarea.csv-out { width:100%; font-family:'Courier New',monospace; font-size:.73rem; border:1px solid #e0ddd6; border-radius:8px; padding:.65rem; background:#faf9f7; color:#333; resize:vertical; min-height:75px; line-height:1.5; }
+.result-title { font-size:.95rem; font-weight:600; color:#2a2a2a; margin-bottom:.6rem; }
+.result-label { font-size:.72rem; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:.07em; margin-bottom:.35rem; }
+.btn { display:inline-block; padding:.55rem 1.3rem; border-radius:8px; font-size:.88rem; font-weight:500; cursor:pointer; border:none; transition:opacity .15s,transform .1s; font-family:inherit; }
+.btn:active { transform:scale(.98); }
+.btn-primary { background:#3B6D11; color:#fff; }
+.btn-primary:hover { background:#27500A; }
+.btn-outline { background:transparent; border:1px solid #ccc; color:#444; }
+.btn-outline:hover { background:#f5f4f0; }
+.btn-row { display:flex; gap:.65rem; flex-wrap:wrap; margin-top:1rem; }
+#status { font-size:.83rem; color:#888; margin-top:.5rem; min-height:1.1rem; }
+#status.ok { color:#3B6D11; }
+#status.err { color:#a32d2d; }
+.divider { border:none; border-top:1px solid #ece9e2; margin:1.1rem 0; }
+.hidden { display:none; }
+.paste-hint { font-size:.75rem; color:#aaa; margin-top:.4rem; }
+</style>
+</head>
+<body>
+
+<h1>🔬 檢驗報告提取工具</h1>
+<p class="subtitle">填寫資料後貼上或上傳檢驗報告，一鍵輸出 Excel 檔案</p>
+
+<!-- ══ 基本資料 ══ -->
+<div class="card">
+  <div class="section-title">基本資料</div>
+  <div class="grid-6" style="margin-bottom:.75rem;">
+    <div class="f"><label>姓名</label><input type="text" id="f_name"></div>
+    <div class="f"><label>性別</label>
+      <select id="f_gender"><option value="">請選擇</option><option>男</option><option>女</option></select>
+    </div>
+    <div class="f"><label>病歷號</label><input type="text" id="f_sn"></div>
+    <div class="f"><label>生日（8碼）</label><input type="text" id="f_dob" placeholder="19520311" oninput="calcAge()"></div>
+    <div class="f"><label>年齡</label><input type="text" id="f_age" readonly></div>
+    <div class="f"><label>採檢日期（8碼）</label><input type="text" id="f_date" placeholder="20251211" oninput="calcAge()"></div>
+  </div>
+  <div class="grid-5">
+    <div class="f"><label>身高（cm）</label><input type="text" id="f_bh" oninput="calcBMI()"></div>
+    <div class="f"><label>體重（kg）</label><input type="text" id="f_bw" oninput="calcBMI()"></div>
+    <div class="f"><label>BMI（自動）</label><input type="text" id="f_bmi" readonly></div>
+    <div class="f"><label>腰圍（cm）</label><input type="text" id="f_waist"></div>
+    <div class="f"><label>脈搏</label><input type="text" id="f_hb"></div>
+  </div>
+  <div class="grid-5" style="margin-top:.6rem;">
+    <div class="f span2">
+      <label>血壓（收縮壓 / 舒張壓）</label>
+      <div class="bp-wrap">
+        <input type="text" id="f_sys" placeholder="120">
+        <span class="bp-sep">/</span>
+        <input type="text" id="f_dia" placeholder="80">
+      </div>
+    </div>
+    <div class="f"><label>B肝表面抗原</label>
+      <select id="f_hbv"><option>未檢查</option><option>陰性</option><option>陽性</option><option>進一步檢查</option></select>
+    </div>
+    <div class="f"><label>C肝抗體</label>
+      <select id="f_hcv"><option>未檢查</option><option>陰性</option><option>陽性</option><option>進一步檢查</option></select>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 理學檢查 ══ -->
+<div class="card">
+  <div class="section-title">理學檢查</div>
+
+  <div class="subsection">耳鼻喉及口腔</div>
+  <div class="radio-group" style="margin-bottom:.5rem;">
+    <label><input type="radio" name="ent_main" id="ent1" value="normal" checked> 無明顯異常</label>
+    <label><input type="radio" name="ent_main" id="ent2" value="abnormal"> 異常</label>
+  </div>
+  <div class="check-group">
+    <label><input type="checkbox" id="ent_hearing" onchange="entAbnormal()"> 助聽器</label>
+    <label><input type="checkbox" id="ent_cavity" onchange="entAbnormal()"> 齲齒</label>
+    <label><input type="checkbox" id="ent_perio" onchange="entAbnormal()"> 牙結石或牙周病</label>
+    <label><input type="checkbox" id="ent_other" onchange="entAbnormal()"> 其他</label>
+    <input type="text" id="ent_note" style="width:140px;padding:.3rem .6rem;border:1px solid #e0ddd6;border-radius:6px;font-size:.82rem;background:#faf9f7;" placeholder="附註" oninput="entOtherNote()">
+  </div>
+
+  <div class="subsection">頸部</div>
+  <div class="grid-2">
+    <div>
+      <span style="font-size:.82rem;font-weight:600;color:#555;">淋巴腺腫大：</span>
+      <div class="radio-group">
+        <label><input type="radio" name="lym" value="no" checked> 無</label>
+        <label><input type="radio" name="lym" value="yes"> 有</label>
+      </div>
+    </div>
+    <div>
+      <span style="font-size:.82rem;font-weight:600;color:#555;">甲狀腺腫大：</span>
+      <div class="radio-group">
+        <label><input type="radio" name="thy" value="no" checked> 無</label>
+        <label><input type="radio" name="thy" value="yes"> 有</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection">胸腹四肢</div>
+  <div id="exam_sections"></div>
+
+  <div style="margin-top:.75rem;display:flex;align-items:center;gap:.5rem;">
+    <span style="font-size:.82rem;font-weight:600;color:#555;white-space:nowrap;">其他異常：</span>
+    <input type="text" id="other_abnormal" value="無" style="width:260px;padding:.35rem .65rem;border:1px solid #e0ddd6;border-radius:6px;font-size:.85rem;background:#faf9f7;">
+  </div>
+
+  <div class="subsection">情緒檢測</div>
+  <div style="margin-bottom:.5rem;">
+    <span style="font-size:.82rem;color:#444;">情緒低落、沮喪或沒有希望？</span>
+    <div class="radio-group" style="margin-top:.25rem;">
+      <label><input type="radio" name="dep1" value="no" checked> 否</label>
+      <label><input type="radio" name="dep1" value="yes"> 是</label>
+    </div>
+  </div>
+  <div>
+    <span style="font-size:.82rem;color:#444;">做事情失去興趣或樂趣？</span>
+    <div class="radio-group" style="margin-top:.25rem;">
+      <label><input type="radio" name="dep2" value="no" checked> 否</label>
+      <label><input type="radio" name="dep2" value="yes"> 是</label>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 報告輸入 ══ -->
+<div class="card">
+  <div class="section-title">輸入檢驗報告</div>
+  <div class="tab-row">
+    <button class="tab-btn" onclick="switchTab('file')">📄 上傳檔案</button>
+    <button class="tab-btn active" onclick="switchTab('paste')">📋 貼上原始資料</button>
+  </div>
+  <div class="tab-panel" id="tab-file">
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <span class="icon">📄</span>
+      <p>點擊或拖曳檔案至此處</p>
+      <span>支援 .txt 純文字格式</span>
+    </div>
+    <input type="file" id="fileInput" accept=".txt,text/plain">
+  </div>
+  <div class="tab-panel active" id="tab-paste">
+    <textarea class="paste-input" id="pasteInput" placeholder="將檢驗報告的原始文字內容貼在這裡…"></textarea>
+    <p class="paste-hint">貼上後點擊下方按鈕開始提取</p>
+    <div class="btn-row" style="margin-top:.65rem;">
+      <button class="btn btn-primary" onclick="processPaste()">開始提取</button>
+      <button class="btn btn-outline" onclick="clearPaste()">清除</button>
+    </div>
+  </div>
+  <p id="status"></p>
+</div>
+
+<!-- ══ 結果 ══ -->
+<div class="card hidden" id="resultSection">
+  <div class="section-title">提取結果</div>
+  <div style="margin-bottom:1rem;">
+    <div class="result-title">📋 成健資料</div>
+    <div class="tag-row" id="tags1"></div>
+    <div class="result-label">預覽</div>
+    <textarea class="csv-out" id="csv1Out" readonly></textarea>
+  </div>
+  <hr class="divider">
+  <div>
+    <div class="result-title">📋 長健資料</div>
+    <div class="tag-row" id="tags2"></div>
+    <div class="result-label">預覽</div>
+    <textarea class="csv-out" id="csv2Out" readonly></textarea>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="downloadXLSX()">📊 下載 test.xlsx</button>
+    <button class="btn btn-outline" onclick="downloadTXT(1)">⬇ 成健數據.txt</button>
+    <button class="btn btn-outline" onclick="downloadTXT(2)">⬇ 長健數據.txt</button>
+    <button class="btn btn-outline" onclick="copyCSV(1)">複製成健數據</button>
+    <button class="btn btn-outline" onclick="copyCSV(2)">複製長健數據</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+// ── Build exam section rows ───────────────────────────────
+const EXAM_SECTIONS=[
+  {id:'chest', label:'胸部'},
+  {id:'cv',    label:'心臟聽診'},
+  {id:'breath',label:'呼吸聽診'},
+  {id:'abd',   label:'腹部'},
+  {id:'ext',   label:'四肢'},
+];
+(function(){
+  const con=document.getElementById('exam_sections');
+  EXAM_SECTIONS.forEach(s=>{
+    con.innerHTML+=`<div class="exam-row">
+      <span class="exam-label">${s.label}</span>
+      <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+        <div class="radio-group" style="margin:0;">
+          <label><input type="radio" name="${s.id}" id="${s.id}_ok" value="ok" checked> 無明顯異常</label>
+          <label><input type="radio" name="${s.id}" id="${s.id}_ab" value="ab"> 異常：</label>
+        </div>
+        <input type="text" id="${s.id}_note" style="width:160px;padding:.3rem .6rem;border:1px solid #e0ddd6;border-radius:6px;font-size:.82rem;background:#faf9f7;" placeholder="附註" oninput="document.getElementById('${s.id}_ab').checked=true">
+      </div>
+    </div>`;
+  });
+})();
+
+function entAbnormal(){
+  if(['ent_hearing','ent_cavity','ent_perio','ent_other'].some(id=>document.getElementById(id).checked))
+    document.getElementById('ent2').checked=true;
+}
+function entOtherNote(){
+  if(document.getElementById('ent_note').value.trim()){
+    document.getElementById('ent_other').checked=true;
+    document.getElementById('ent2').checked=true;
+  }
+}
+
+// ── Auto-calc ─────────────────────────────────────────────
+function parseDate8(s){
+  s=(s||'').replace(/\D/g,'');
+  if(s.length!==8)return null;
+  const d=new Date(+s.slice(0,4),+s.slice(4,6)-1,+s.slice(6,8));
+  return isNaN(d)?null:d;
+}
+function fmtDate(s){
+  s=(s||'').replace(/\D/g,'');
+  if(s.length!==8)return s;
+  return +s.slice(0,4)+'/'+  +s.slice(4,6)+'/'+  +s.slice(6,8);
+}
+function calcAge(){
+  const dob=parseDate8(document.getElementById('f_dob').value);
+  const exam=parseDate8(document.getElementById('f_date').value);
+  if(!dob||!exam){document.getElementById('f_age').value='';return;}
+  let age=exam.getFullYear()-dob.getFullYear();
+  const m=exam.getMonth()-dob.getMonth();
+  if(m<0||(m===0&&exam.getDate()<dob.getDate()))age--;
+  document.getElementById('f_age').value=age>=0?age:'';
+}
+function calcBMI(){
+  const h=parseFloat(document.getElementById('f_bh').value);
+  const w=parseFloat(document.getElementById('f_bw').value);
+  if(!h||!w||h<=0){document.getElementById('f_bmi').value='';return;}
+  document.getElementById('f_bmi').value=(w/(h*h/10000)).toFixed(2);
+}
+
+// ── Tab ───────────────────────────────────────────────────
+function switchTab(name){
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',(i===0&&name==='file')||(i===1&&name==='paste')));
+  document.getElementById('tab-file').classList.toggle('active',name==='file');
+  document.getElementById('tab-paste').classList.toggle('active',name==='paste');
+  setStatus('','');
+}
+function processPaste(){
+  const t=document.getElementById('pasteInput').value.trim();
+  if(!t){setStatus('請先貼上報告內容','err');return;}
+  rawText=t;setStatus('開始提取…','ok');setTimeout(processReport,50);
+}
+function clearPaste(){document.getElementById('pasteInput').value='';setStatus('','');}
+
+// ── File upload ───────────────────────────────────────────
+const dropZone=document.getElementById('dropZone'),fileInput=document.getElementById('fileInput');
+dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('dragover');});
+dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('dragover');if(e.dataTransfer.files[0])loadFile(e.dataTransfer.files[0]);});
+fileInput.addEventListener('change',()=>{if(fileInput.files[0])loadFile(fileInput.files[0]);});
+function loadFile(file){
+  const reader=new FileReader();
+  reader.onload=e=>{rawText=e.target.result;dropZone.classList.add('file-loaded');dropZone.querySelector('.icon').textContent='✅';dropZone.querySelector('p').textContent=file.name;setStatus('載入成功，開始提取…','ok');setTimeout(processReport,100);};
+  reader.onerror=()=>setStatus('讀取失敗','err');
+  reader.readAsText(file,'UTF-8');
+}
+function setStatus(m,c){const el=document.getElementById('status');el.textContent=m;el.className=c||'';}
+
+// ── Field definitions ─────────────────────────────────────
+const FIELDS_1=[
+  {label:'總膽固醇',           keys:['cholesterol'],           ref:'<200',      urine:false},
+  {label:'低密度脂蛋白',       keys:['ldl'],                   ref:'<100',      urine:false},
+  {label:'高密度脂蛋白',       keys:['hdl'],                   ref:'>40',       urine:false},
+  {label:'三酸甘油脂',         keys:['triglyceride'],          ref:'<150',      urine:false},
+  {label:'血醣',               keys:['glucose'],               ref:'70~100',    serum:true },
+  {label:'尿酸',               keys:['uric acid','uricacid'],  ref:'4.40~7.60', urine:false},
+  {label:'肌酸酐',             keys:['creatinine'],            ref:'0.70~1.30', urine:false},
+  {label:'腎絲球過濾率(eGFR)', keys:['egfr','gfr'],           ref:'>60.0',     urine:false},
+  {label:'GOT',                keys:['ast','got'],             ref:'13~39',     urine:false},
+  {label:'GPT',                keys:['alt','gpt'],             ref:'7~52',      urine:false},
+  {label:'尿潛血',             keys:['blood'],                 ref:'(-)',       urine:true },
+  {label:'尿白血球脂脢',       keys:['leucocyte','leukocyte'], ref:'(-)~(+/-)', urine:true },
+  {label:'尿液亞硝酸鹽',      keys:['nitrite'],               ref:'(-)',       urine:true },
+  {label:'尿蛋白',             keys:['protein'],               ref:'(-)',       urine:true },
+  {label:'尿糖',               keys:['glucose'],               ref:'(-)',       urine:true },
+];
+const FIELDS_2=[
+  {label:'白血球',         keys:['wbc'],                              ref:'4.14~10.52'},
+  {label:'紅血球',         keys:['rbc'],                              ref:'4.31~5.95' },
+  {label:'血色素',         keys:['hb','hemoglobin','haemoglobin'],    ref:'13.4~17.2' },
+  {label:'平均紅血球容積', keys:['mcv'],                              ref:'83.4~98.5' },
+  {label:'血小板',         keys:['platelet'],                         ref:'160~370'   },
+  {label:'糖化血色素',     keys:['hba1c','hb a1c','a1c','壽-hba1c'], ref:'4.0~5.5'   },
+  {label:'鈣離子',         keys:['calcium'],                          ref:'8.6~10.3'  },
+  {label:'白蛋白',         keys:['albumin'],                          ref:'3.5~5.7'   },
+  {label:'gamma-GT',       keys:['g-gt','ggt','gamma-gt','γ-gt'],     ref:'9~64'      },
+  {label:'甲狀腺刺激素',   keys:['tsh'],                              ref:'0.380~5.330'},
+  {label:'維他命B12',      keys:['vitamin b12','b12'],                ref:'247~911'   },
+  {label:'葉酸',           keys:['folic','folate'],                   ref:'5.39~20.57'},
+  {label:'25-OH維他命D',   keys:['25-oh','vitamin d','vit. d','vit d'],ref:'30.0~100.0'},
+];
+
+// Row 1 headers — exact match of xls
+const HEADERS_1={
+  1:'總膽固醇',2:'低密度脂蛋白',3:'高密度脂蛋白',4:'三酸甘油脂',5:'血醣',
+  6:'尿酸',7:'肌酸酐',8:'腎絲球過濾率(eGFR)',9:'GOT',10:'GPT',
+  11:'尿潛血',12:'尿白血球脂脢',13:'尿液亞硝酸鹽',14:'尿蛋白',15:'尿糖',
+  21:'姓名',22:'性別',23:'病歷號',24:'生日',25:'年齡',26:'採檢日期',
+  27:'身高',28:'體重',29:'身體質量指數',30:'腰圍',31:'收縮壓',32:'舒張壓',33:'心跳',
+  41:'總膽固醇',42:'低密度脂蛋白',43:'高密度脂蛋白',44:'三酸甘油脂',45:'血醣',
+  46:'尿酸',47:'肌酸酐',48:'腎絲球過濾率(eGFR)',49:'GOT',50:'GPT',
+  51:'尿潛血',52:'尿白血球脂脢',53:'尿液亞硝酸鹽',54:'尿蛋白',55:'尿糖',
+  61:'ENT無異常',62:'ENT異常',63:'ENT助聽器',64:'ENT齲齒',65:'ENT牙結石或牙周病',
+  66:'ENT其他',67:'ENT附註',68:'Lym',69:'Thy',
+  70:'chest',71:'chest附註',72:'CV',73:'CV附註',
+  74:'Breath',75:'Breath附註',76:'Abd',77:'Abd附註',78:'ext',79:'ext附註',
+  80:'其他異常',81:'憂鬱檢測',82:'B肝表面抗原',83:'C肝抗體',
+  101:'血壓判讀',102:'飯前血糖判讀',103:'血脂肪判讀',104:'腎功能判讀',105:'肝功能判讀',106:'代謝症候群判讀'
+};
+const HEADERS_2={
+  1:'白血球',2:'紅血球',3:'血色素',4:'平均紅血球容積',5:'血小板',
+  6:'糖化血色素',7:'鈣離子',8:'白蛋白',9:'gamma-GT',10:'甲狀腺刺激素',
+  11:'維他命B12',12:'葉酸',13:'25-OH維他命D',
+  21:'姓名',22:'性別',23:'病歷號',24:'生日',25:'年齡',26:'採檢日期',
+  41:'白血球',42:'紅血球',43:'血色素',44:'平均紅血球容積',45:'血小板',
+  46:'糖化血色素',47:'鈣離子',48:'白蛋白',49:'gamma-GT',50:'甲狀腺刺激素',
+  51:'維他命B12',52:'葉酸',53:'25-OH維他命D'
+};
+const REFS_1={1:'<200',2:'<100',3:'>40',4:'<150',5:'70~100',6:'4.40~7.60',7:'0.70~1.30',8:'>60.0',9:'13~39',10:'7~52',11:'(-)',12:'(-)~(+/-)',13:'(-)',14:'(-)',15:'(-)'};
+const REFS_2={1:'4.14~10.52',2:'4.31~5.95',3:'13.4~17.2',4:'83.4~98.5',5:'160~370',6:'4.0~5.5',7:'8.6~10.3',8:'3.5~5.7',9:'9~64',10:'0.380~5.330',11:'247~911',12:'5.39~20.57',13:'30.0~100.0'};
+
+let rawText='',csv1='',csv2='',extractedVals1=[],extractedVals2=[];
+
+// ── Parsing ───────────────────────────────────────────────
+function buildRowSets(text){
+  const lines=text.split('\n');
+  const skip=l=>!l||/^[=\-]/.test(l)||/^(檢驗項目|學門別|收件|一日|檢體|醫囑|採檢|檢驗結果)/.test(l);
+  let urine=[],serum=[],all=[],inUrine=false;
+  for(const raw of lines){
+    if(raw.includes('檢體別:U'))inUrine=true;
+    else if(raw.includes('檢體別:B'))inUrine=false;
+    const l=raw.trim();if(skip(l))continue;
+    all.push(l);(inUrine?urine:serum).push(l);
+  }
+  return{urine,serum,all};
+}
+function extractFromRows(rows,keys){
+  for(const row of rows){
+    const lower=row.toLowerCase();
+    for(const key of keys){
+      if(lower.startsWith(key.toLowerCase())){
+        const parts=row.split(/\s{2,}/);
+        if(parts.length>=2){
+          const n=parts[0].match(/([\d.]+)\s*$/);
+          if(n)return n[1];
+          return parts[1].trim().replace(/\s.*$/,'');
+        }
+        const tv=row.match(/([+\-\d][+\-]?)\s*$/);
+        if(tv)return tv[1].trim();
+      }
+    }
+  }
+  return'';
+}
+function getValue(field,sets){
+  if(field.urine)return extractFromRows(sets.urine,field.keys);
+  if(field.serum)return extractFromRows(sets.serum,field.keys);
+  return extractFromRows(sets.all,field.keys);
+}
+function processReport(){
+  const sets=buildRowSets(rawText);
+  extractedVals1=FIELDS_1.map(f=>getValue(f,sets));
+  extractedVals2=FIELDS_2.map(f=>getValue(f,sets));
+  csv1=FIELDS_1.map(f=>f.label).join(',')+'\n'+FIELDS_1.map(f=>f.ref).join(',')+'\n'+extractedVals1.join(',');
+  csv2=FIELDS_2.map(f=>f.label).join(',')+'\n'+FIELDS_2.map(f=>f.ref).join(',')+'\n'+extractedVals2.join(',');
+  document.getElementById('csv1Out').value=csv1;
+  document.getElementById('csv2Out').value=csv2;
+  renderTags('tags1',FIELDS_1,sets);
+  renderTags('tags2',FIELDS_2,sets);
+  document.getElementById('resultSection').classList.remove('hidden');
+  setStatus('提取完成！','ok');
+}
+function renderTags(id,fields,sets){
+  const c=document.getElementById(id);c.innerHTML='';
+  for(const f of fields){
+    const found=getValue(f,sets)!=='';
+    const s=document.createElement('span');
+    s.className='tag '+(found?'found':'missing');
+    s.textContent=(found?'✓ ':'✗ ')+f.label;
+    c.appendChild(s);
+  }
+}
+
+// ── Collect form → col map ────────────────────────────────
+function g(id){return(document.getElementById(id)?.value?.trim()||'');}
+function chk(id){return!!document.getElementById(id)?.checked;}
+function radio(name){return document.querySelector(`input[name="${name}"]:checked`)?.value||'';}
+function hepText(v){
+  if(v==='陰性')    return'□未檢查　■陰性　□陽性　□進一步檢查';
+  if(v==='陽性')    return'□未檢查　□陰性　■陽性　□進一步檢查';
+  if(v==='進一步檢查')return'□未檢查　□陰性　□陽性　■進一步檢查';
+  return'■未檢查　□陰性　□陽性　□進一步檢查';
+}
+function examText(name){return radio(name)==='ok'?'■無明顯異常　□異常：':'□無明顯異常　■異常：';}
+
+function collectFormValues(){
+  const entNormal=radio('ent_main')==='normal';
+  return{
+    21:g('f_name'), 22:g('f_gender'), 23:g('f_sn'),
+    24:fmtDate(g('f_dob')), 25:g('f_age'), 26:fmtDate(g('f_date')),
+    27:g('f_bh'), 28:g('f_bw'), 29:g('f_bmi'), 30:g('f_waist'),
+    31:g('f_sys'), 32:g('f_dia'), 33:g('f_hb'),
+    61:entNormal?'■無明顯異常':'□無明顯異常',
+    62:entNormal?'□異常':'■異常',
+    63:chk('ent_hearing')?(entNormal?'□助聽器':'■助聽器'):'□助聽器',
+    64:chk('ent_cavity') ?(entNormal?'□齲齒':'■齲齒'):'□齲齒',
+    65:chk('ent_perio')  ?(entNormal?'□牙結石或牙周病':'■牙結石或牙周病'):'□牙結石或牙周病',
+    66:chk('ent_other')  ?(entNormal?'□其他異常：':'■其他異常：'):'□其他異常：',
+    67:g('ent_note'),
+    68:radio('lym')==='yes'?'■有　□無':'□有　■無',
+    69:radio('thy')==='yes'?'■有　□無':'□有　■無',
+    70:examText('chest'),  71:g('chest_note'),
+    72:examText('cv'),     73:g('cv_note'),
+    74:examText('breath'), 75:g('breath_note'),
+    76:examText('abd'),    77:g('abd_note'),
+    78:examText('ext'),    79:g('ext_note'),
+    80:g('other_abnormal'),
+    81:(radio('dep1')==='yes'||radio('dep2')==='yes')?'□2題皆答「否」　■2題任1題答「是」':'■2題皆答「否」　□2題任1題答「是」',
+    82:hepText(g('f_hbv')),
+    83:hepText(g('f_hcv')),
+  };
+}
+
+// ── XLSX export ───────────────────────────────────────────
+function sc(ws,r,c,v){const a=XLSX.utils.encode_cell({r,c});ws[a]={v:String(v??''),t:'s'};}
+
+function makeSheet1(labVals){
+  const ws={}, maxCol=118;
+  for(const[col,hdr]of Object.entries(HEADERS_1)) sc(ws,0,+col-1,hdr);
+  for(const[col,ref]of Object.entries(REFS_1))    sc(ws,1,+col-1,ref);
+  const fv=collectFormValues();
+  for(const[col,val]of Object.entries(fv))        sc(ws,1,+col-1,val);
+  labVals.forEach((v,i)=>sc(ws,1,40+i,v));
+  ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:1,c:maxCol-1}});
+  ws['!cols']=Array.from({length:maxCol},(_,i)=>({wch:HEADERS_1[i+1]?Math.max(String(HEADERS_1[i+1]).length*2,10):3}));
+  return ws;
+}
+function makeSheet2(labVals){
+  const ws={}, maxCol=72;
+  for(const[col,hdr]of Object.entries(HEADERS_2)) sc(ws,0,+col-1,hdr);
+  for(const[col,ref]of Object.entries(REFS_2))    sc(ws,1,+col-1,ref);
+  const fv=collectFormValues();
+  [21,22,23,24,25,26].forEach(col=>sc(ws,1,col-1,fv[col]||''));
+  labVals.forEach((v,i)=>sc(ws,1,40+i,v));
+  ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:1,c:maxCol-1}});
+  ws['!cols']=Array.from({length:maxCol},(_,i)=>({wch:HEADERS_2[i+1]?Math.max(String(HEADERS_2[i+1]).length*2,10):3}));
+  return ws;
+}
+
+function downloadXLSX(){
+  if(!extractedVals1.length){setStatus('請先提取資料','err');return;}
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,makeSheet1(extractedVals1),'成健資料');
+  XLSX.utils.book_append_sheet(wb,makeSheet2(extractedVals2),'長健資料');
+  XLSX.writeFile(wb,'test.xlsx');
+  setStatus('✅ 已下載 test.xlsx','ok');
+}
+
+function downloadTXT(n){
+  const content=n===1?csv1:csv2,filename=n===1?'成健數據.txt':'長健數據.txt';
+  const blob=new Blob(['\uFEFF'+content],{type:'text/plain;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();URL.revokeObjectURL(a.href);
+}
+function copyCSV(n){
+  const val=n===1?csv1:csv2;
+  navigator.clipboard.writeText(val).then(()=>{setStatus('已複製！','ok');setTimeout(()=>setStatus('',''),2000);})
+  .catch(()=>{document.getElementById('csv'+n+'Out').select();document.execCommand('copy');setStatus('已複製！','ok');setTimeout(()=>setStatus('',''),2000);});
+}
+</script>
+</body>
+</html>
